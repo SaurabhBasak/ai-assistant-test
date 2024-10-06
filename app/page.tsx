@@ -1,19 +1,48 @@
-'use client'
+"use client";
 
+import transcript from "@/actions/transcription";
 import Messages from "@/components/Messages";
 import Recorder, { mimeType } from "@/components/Recorder";
 import { SettingsIcon } from "lucide-react";
 
 import Image from "next/image";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFormState } from "react-dom";
+
+const initialState = {
+    sender: "",
+    response: "",
+    id: "",
+};
+
+export type Message = {
+    sender: string;
+    response: string;
+    id: string;
+};
 
 export default function Home() {
-
     const fileRef = useRef<HTMLInputElement | null>(null);
     const submitButtonRef = useRef<HTMLButtonElement | null>(null);
+    const [state, formAction] = useFormState(transcript, initialState);
+    const [messages, setMessages] = useState<Message[]>([]);
 
-    const uploadAudio = (blob: Blob) => {        
-        const file = new File([blob], 'audio.webm', { type: mimeType});
+    // Responsible for updating the messages array when the Server Action completes
+    useEffect(() => {
+        if (state.response && state.sender && state.id) {
+            setMessages((messages) => [
+                {
+                    sender: state.sender || "",
+                    response: state.response || "",
+                    id: state.id || "",
+                },
+                ...messages,
+            ]);
+        }
+    }, [state]);
+
+    const uploadAudio = (blob: Blob) => {
+        const file = new File([blob], "audio.webm", { type: mimeType });
 
         // set the file as the value of the hidden file input field
         if (fileRef.current) {
@@ -26,7 +55,8 @@ export default function Home() {
                 submitButtonRef.current.click();
             }
         }
-    }
+    };
+    console.log(messages);
 
     return (
         <div className="bg-black h-screen overflow-y-auto">
@@ -54,14 +84,19 @@ export default function Home() {
                 </div>
 
                 {/* Hidden fields */}
-                <input type="file" name="audio" hidden ref={fileRef}/>
-                <button type="submit" name="submit" hidden ref={submitButtonRef}>
+                <input type="file" name="audio" hidden ref={fileRef} />
+                <button
+                    type="submit"
+                    name="submit"
+                    hidden
+                    ref={submitButtonRef}
+                >
                     Submit Audio
                 </button>
 
                 <div className="fixed bottom-0 w-full overflow-hidden bg-black rounded-t-3xl">
                     {/* Recorder */}
-                    <Recorder uploadAudio={uploadAudio}/>
+                    <Recorder uploadAudio={uploadAudio} />
 
                     <div>
                         {/* Voice Synthesizer - output of the Assistant voice */}
