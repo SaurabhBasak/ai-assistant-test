@@ -3,6 +3,7 @@
 import transcript from "@/actions/transcription";
 import Messages from "@/components/Messages";
 import Recorder, { mimeType } from "@/components/Recorder";
+import VoiceSynthesizer from "@/components/VoiceSynthesizer";
 import { SettingsIcon } from "lucide-react";
 
 import Image from "next/image";
@@ -26,6 +27,7 @@ export default function Home() {
     const submitButtonRef = useRef<HTMLButtonElement | null>(null);
     const [state, formAction] = useFormState(transcript, initialState);
     const [messages, setMessages] = useState<Message[]>([]);
+    const [displaySettings, setDisplaySettings] = useState(false);
 
     // Responsible for updating the messages array when the Server Action completes
     useEffect(() => {
@@ -56,6 +58,7 @@ export default function Home() {
             }
         }
     };
+
     console.log(messages);
 
     return (
@@ -73,6 +76,7 @@ export default function Home() {
                 <SettingsIcon
                     size={40}
                     className="p-2 m-2 rounded-full cursor-pointer bg-purple-600 text-black transition-all ease-in-out duration-150 hover:bg-purple-700 hover:text-white"
+                    onClick={() => setDisplaySettings(!displaySettings)}
                 />
             </header>
 
@@ -80,7 +84,7 @@ export default function Home() {
 
             <form action={formAction} className="flex flex-col bg-black">
                 <div className="flex-1 bg-gradient-to-b from-purple-500 to-black">
-                    <Messages />
+                    <Messages messages={messages}/>
                 </div>
 
                 {/* Hidden fields */}
@@ -99,7 +103,10 @@ export default function Home() {
                     <Recorder uploadAudio={uploadAudio} />
 
                     <div>
-                        {/* Voice Synthesizer - output of the Assistant voice */}
+                        <VoiceSynthesizer
+                            state={state}
+                            displaySettings={displaySettings}
+                         />
                     </div>
                 </div>
             </form>

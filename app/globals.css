@@ -7,6 +7,10 @@ body {
 }
 
 @layer components {
+    .message {
+        @apply bg-purple-500 text-white p-4 rounded-lg w-fit;
+    }
+
     .assistant {
         @apply h-40 w-40 object-contain
     }
