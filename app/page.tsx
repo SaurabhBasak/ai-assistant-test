@@ -12,9 +12,7 @@ export default function Home() {
     const fileRef = useRef<HTMLInputElement | null>(null);
     const submitButtonRef = useRef<HTMLButtonElement | null>(null);
 
-    const uploadAudio = (blob: Blob) => {
-        const url = URL.createObjectURL(blob);
-        
+    const uploadAudio = (blob: Blob) => {        
         const file = new File([blob], 'audio.webm', { type: mimeType});
 
         // set the file as the value of the hidden file input field
@@ -50,7 +48,7 @@ export default function Home() {
 
             {/* Form */}
 
-            <form className="flex flex-col bg-black">
+            <form action={formAction} className="flex flex-col bg-black">
                 <div className="flex-1 bg-gradient-to-b from-purple-500 to-black">
                     <Messages />
                 </div>
