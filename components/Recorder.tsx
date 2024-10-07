@@ -5,20 +5,74 @@ import activeAssitantIcon from "@/img/active.gif";
 import notActiveAssistantIcon from "@/img/notactive.png";
 import Image from "next/image";
 import { useFormStatus } from "react-dom";
+import { start } from "repl";
 
 export const mimeType = "audio/webm";
 
 function Recorder({ uploadAudio }: { uploadAudio: (blob: Blob) => void }) {
     const mediaRecorder = useRef<MediaRecorder | null>(null);
+    const recognition = useRef<SpeechRecognition | null>(null);
     const { pending } = useFormStatus();
     const [permission, setPermission] = useState(false);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [recordingStatus, setRecordingStatus] = useState("inactive");
     const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+    const [isListening, setIsListening] = useState(false);
+    const [isRecognitionActive, setIsRecognitionActive] = useState(false);
+
+    // useEffect(() => {
+    //     if (recordingStatus === "recording" && isRecognitionActive) {
+            
+    //     }
+    // }, []);
 
     useEffect(() => {
         getMicrophonePermission();
-    }, []);
+
+        const SpeechRecognition =
+            window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition.current = new SpeechRecognition();
+        recognition.current.continuous = true;
+        recognition.current.interimResults = true;
+        recognition.current.lang = "en-US";
+        console.log("SpeechRecognition:", recognition.current);
+
+        console.log("Pending:", pending);
+        if (!pending) {
+            if (!isListening) {
+                recognition.current.start();
+                recognition.current.onspeechstart = () => {
+                    setIsListening(true);
+                    setIsRecognitionActive(true);
+                    console.log("Listening started");
+                };
+
+                recognition.current.onresult = (event) => {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0])
+                        .map(result => result.transcript)
+                        .join('');
+    
+                    console.log("Transcript:", transcript);
+                    if (transcript.toLowerCase().includes("siri")) {
+                        recognition.current.stop();
+                        setIsListening(false);
+                    }
+                };
+            }
+            recognition.current.onspeechend = () => {
+                setIsListening(false);
+                setIsRecognitionActive(false);
+                console.log("Listening stopped");
+                if (recordingStatus === "inactive") {
+                    startRecording();
+                }
+                else {
+                    stopRecording();
+                }
+            };
+        }
+    }, [pending, isListening, recordingStatus, isRecognitionActive]);
 
     const getMicrophonePermission = async () => {
         if ("MediaRecorder" in window) {
@@ -46,6 +100,7 @@ function Recorder({ uploadAudio }: { uploadAudio: (blob: Blob) => void }) {
     };
 
     const startRecording = async () => {
+        console.log("Start recording");
         if (stream === null || pending) return;
 
         setRecordingStatus("recording");
@@ -68,22 +123,26 @@ function Recorder({ uploadAudio }: { uploadAudio: (blob: Blob) => void }) {
     };
 
     const stopRecording = async () => {
+        console.log("Stop recording");
         if (mediaRecorder.current === null || pending) return;
 
         setRecordingStatus("inactive");
         mediaRecorder.current.stop();
         mediaRecorder.current.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: mimeType});
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
             // const audioUrl = URL.createObjectURL(audioBlob);
             uploadAudio(audioBlob);
             setAudioChunks([]);
-        }
-    }
+        };
+    };
 
     return (
         <div className="flex items-center justify-center text-white">
             {!permission && (
-                <button className="assistant text-gray-400 font-bold" onClick={getMicrophonePermission}>
+                <button
+                    className="assistant text-gray-400 font-bold"
+                    onClick={getMicrophonePermission}
+                >
                     Allow Microphone
                 </button>
             )}
