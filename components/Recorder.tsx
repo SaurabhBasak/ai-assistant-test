@@ -83,8 +83,8 @@ function Recorder({ uploadAudio }: { uploadAudio: (blob: Blob) => void }) {
     return (
         <div className="flex items-center justify-center text-white">
             {!permission && (
-                <button onClick={getMicrophonePermission}>
-                    Get Microphone
+                <button className="assistant text-gray-400 font-bold" onClick={getMicrophonePermission}>
+                    Allow Microphone
                 </button>
             )}
 
