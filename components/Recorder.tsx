@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import activeAssitantIcon from "@/img/active.gif";
 import notActiveAssistantIcon from "@/img/notactive.png";
 import Image from "next/image";
@@ -18,13 +18,43 @@ function Recorder({ uploadAudio }: { uploadAudio: (blob: Blob) => void }) {
     const [recordingStatus, setRecordingStatus] = useState("inactive");
     const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
     const [isListening, setIsListening] = useState(false);
-    const [isRecognitionActive, setIsRecognitionActive] = useState(false);
 
-    // useEffect(() => {
-    //     if (recordingStatus === "recording" && isRecognitionActive) {
-            
-    //     }
-    // }, []);
+    const startRecording = useCallback(async () => {
+        console.log("Start recording");
+        if (stream === null || pending) return;
+
+        setRecordingStatus("recording");
+
+        // Create new media recorder instance using the stream
+        const media = new MediaRecorder(stream, { mimeType });
+        mediaRecorder.current = media;
+        mediaRecorder.current.start();
+
+        const localAudioChunks: Blob[] = [];
+
+        mediaRecorder.current.ondataavailable = (event) => {
+            if (typeof event.data === "undefined" || event.data.size === 0)
+                return;
+
+            localAudioChunks.push(event.data);
+        };
+
+        setAudioChunks(localAudioChunks);
+    }, [stream, pending]);
+
+    const stopRecording = useCallback(async () => {
+        console.log("Stop recording");
+        if (mediaRecorder.current === null || pending) return;
+
+        setRecordingStatus("inactive");
+        mediaRecorder.current.stop();
+        mediaRecorder.current.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
+            // const audioUrl = URL.createObjectURL(audioBlob);
+            uploadAudio(audioBlob);
+            setAudioChunks([]);
+        };
+    }, [audioChunks, pending, uploadAudio]);
 
     useEffect(() => {
         getMicrophonePermission();
@@ -35,15 +65,13 @@ function Recorder({ uploadAudio }: { uploadAudio: (blob: Blob) => void }) {
         recognition.current.continuous = true;
         recognition.current.interimResults = true;
         recognition.current.lang = "en-US";
-        console.log("SpeechRecognition:", recognition.current);
 
-        console.log("Pending:", pending);
-        if (!pending) {
+        if (permission && recordingStatus === "inactive" && !pending) {
             if (!isListening) {
+                console.log("Start")
                 recognition.current.start();
-                recognition.current.onspeechstart = () => {
+                recognition.current.onstart = () => {
                     setIsListening(true);
-                    setIsRecognitionActive(true);
                     console.log("Listening started");
                 };
 
@@ -54,25 +82,28 @@ function Recorder({ uploadAudio }: { uploadAudio: (blob: Blob) => void }) {
                         .join('');
     
                     console.log("Transcript:", transcript);
-                    if (transcript.toLowerCase().includes("siri")) {
+                    if (transcript.toLowerCase().includes("raven")) {
                         recognition.current.stop();
-                        setIsListening(false);
+                        recognition.current.onend = () => {
+                            setIsListening(false);
+                            console.log("Listening stopped");
+                            startRecording();
+                        }
                     }
                 };
             }
-            recognition.current.onspeechend = () => {
-                setIsListening(false);
-                setIsRecognitionActive(false);
-                console.log("Listening stopped");
-                if (recordingStatus === "inactive") {
-                    startRecording();
-                }
-                else {
-                    stopRecording();
-                }
-            };
+            // recognition.current.onend = () => {
+            //     setIsListening(false);
+            //     console.log("Listening stopped");
+            //     // if (recordingStatus === "inactive") {
+            //     //     startRecording();
+            //     // }
+            //     // else {
+            //     //     stopRecording();
+            //     // }
+            // };
         }
-    }, [pending, isListening, recordingStatus, isRecognitionActive]);
+    }, [pending, isListening, recordingStatus, permission, startRecording, stopRecording]);
 
     const getMicrophonePermission = async () => {
         if ("MediaRecorder" in window) {
@@ -97,43 +128,6 @@ function Recorder({ uploadAudio }: { uploadAudio: (blob: Blob) => void }) {
         } else {
             alert("Mediarecorder not supported in browser.");
         }
-    };
-
-    const startRecording = async () => {
-        console.log("Start recording");
-        if (stream === null || pending) return;
-
-        setRecordingStatus("recording");
-
-        // Create new media recorder instance using the stream
-        const media = new MediaRecorder(stream, { mimeType });
-        mediaRecorder.current = media;
-        mediaRecorder.current.start();
-
-        const localAudioChunks: Blob[] = [];
-
-        mediaRecorder.current.ondataavailable = (event) => {
-            if (typeof event.data === "undefined" || event.data.size === 0)
-                return;
-
-            localAudioChunks.push(event.data);
-        };
-
-        setAudioChunks(localAudioChunks);
-    };
-
-    const stopRecording = async () => {
-        console.log("Stop recording");
-        if (mediaRecorder.current === null || pending) return;
-
-        setRecordingStatus("inactive");
-        mediaRecorder.current.stop();
-        mediaRecorder.current.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: mimeType });
-            // const audioUrl = URL.createObjectURL(audioBlob);
-            uploadAudio(audioBlob);
-            setAudioChunks([]);
-        };
     };
 
     return (
